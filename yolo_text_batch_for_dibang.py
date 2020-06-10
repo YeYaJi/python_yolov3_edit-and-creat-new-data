@@ -2,26 +2,30 @@ from ctypes import *
 import math
 import random
 
+
 def sample(probs):
     s = sum(probs)
-    probs = [a/s for a in probs]
+    probs = [a / s for a in probs]
     r = random.uniform(0, 1)
     for i in range(len(probs)):
         r = r - probs[i]
         if r <= 0:
             return i
-    return len(probs)-1
+    return len(probs) - 1
+
 
 def c_array(ctype, values):
-    arr = (ctype*len(values))()
+    arr = (ctype * len(values))()
     arr[:] = values
     return arr
+
 
 class BOX(Structure):
     _fields_ = [("x", c_float),
                 ("y", c_float),
                 ("w", c_float),
                 ("h", c_float)]
+
 
 class DETECTION(Structure):
     _fields_ = [("bbox", BOX),
@@ -38,14 +42,14 @@ class IMAGE(Structure):
                 ("c", c_int),
                 ("data", POINTER(c_float))]
 
+
 class METADATA(Structure):
     _fields_ = [("classes", c_int),
                 ("names", POINTER(c_char_p))]
 
-    
 
-#lib = CDLL("/home/pjreddie/documents/darknet/libdarknet.so", RTLD_GLOBAL)
-lib = CDLL("libdarknet.so", RTLD_GLOBAL)
+# lib = CDLL("/home/pjreddie/documents/darknet/libdarknet.so", RTLD_GLOBAL)
+lib = CDLL("/home/gsh/PycharmProjects/PycharmProjects/PycharmProjects/yolo_net/darknet/libdarknet.so", RTLD_GLOBAL)
 lib.network_width.argtypes = [c_void_p]
 lib.network_width.restype = c_int
 lib.network_height.argtypes = [c_void_p]
@@ -114,6 +118,7 @@ predict_image = lib.network_predict_image
 predict_image.argtypes = [c_void_p, IMAGE]
 predict_image.restype = POINTER(c_float)
 
+
 def classify(net, meta, im):
     out = predict_image(net, im)
     res = []
@@ -121,6 +126,7 @@ def classify(net, meta, im):
         res.append((meta.names[i], out[i]))
     res = sorted(res, key=lambda x: -x[1])
     return res
+
 
 def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45):
     im = load_image(image, 0, 0)
@@ -141,14 +147,54 @@ def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45):
     free_image(im)
     free_detections(dets, num)
     return res
-    
+
+
 if __name__ == "__main__":
-    #net = load_net("cfg/densenet201.cfg", "/home/pjreddie/trained/densenet201.weights", 0)
-    #im = load_image("data/wolf.jpg", 0, 0)
-    #meta = load_meta("cfg/imagenet1k.data")
-    #r = classify(net, meta, im)
-    #print r[:10]
-    net = load_net("cfg/tiny-yolo.cfg", "tiny-yolo.weights", 0)
-    meta = load_meta("cfg/coco.data")
-    r = detect(net, meta, "data/dog.jpg")
-    print r
+    # net = load_net("cfg/densenet201.cfg", "/home/pjreddie/trained/densenet201.weights", 0)
+    # im = load_image("data/wolf.jpg", 0, 0)
+    # meta = load_meta("cfg/imagenet1k.data")
+    # r = classify(net, meta, im)
+    # print r[:10]
+    import os
+
+    w = 1280
+    h = 720
+    net = load_net(
+        "/home/gsh/PycharmProjects/PycharmProjects/PycharmProjects/yolo_net/darknet/cfg/yolov3-tiny.cfg".encode(
+            "utf-8"), \
+        "/home/gsh/PycharmProjects/PycharmProjects/PycharmProjects/yolo_net/darknet/backup/yolov3-tiny_190000.weights".encode(
+            "utf-8"), 0)
+
+    meta = load_meta(
+        "/home/gsh/PycharmProjects/PycharmProjects/PycharmProjects/yolo_net/darknet/cfg/voc.data".encode("utf-8"))
+
+    img_path = "/home/gsh/PycharmProjects/PycharmProjects/PycharmProjects/cloud_dibang/delet_same_img/dataset_last_up/other_two_month"
+
+    test_img_list = list(os.listdir(img_path))
+
+    for i, img_name in enumerate(test_img_list):
+
+        r = detect(net, meta, (img_path + "/" + str(img_name)).encode("utf-8"))
+
+        print("-------------第%d个图------------" % (i), "\n")
+        print("r==",r)
+
+
+
+        for i, hang_num in enumerate(r):
+            # print(hang_num,i)
+            rh = 102
+
+            coordinate = list(hang_num[2])
+            print(hang_num)
+            if coordinate[3] >= rh:
+                coordinate[1] = coordinate[1] - ((coordinate[3]) / 2 - rh / 2)
+                coordinate[3] = rh
+
+            img_txt_one = (str(hang_num[0]))[2] + " " + str(coordinate[0] / w) + " " + str(
+                coordinate[1] / h) + " " + str(coordinate[2] / w) + " " + str(coordinate[3] / h)
+            print(img_txt_one)
+            # print(img_txt_one.replace(",",""))
+
+            with open("/home/gsh/PycharmProjects/PycharmProjects/PycharmProjects/cloud_dibang/delet_same_img/dataset_last_up/other_two_month_txt/" + (str(img_name))[:-3] + "txt","a") as f:
+                f.write(img_txt_one.replace(",", "") + "\n")

@@ -2,26 +2,30 @@ from ctypes import *
 import math
 import random
 
+
 def sample(probs):
     s = sum(probs)
-    probs = [a/s for a in probs]
+    probs = [a / s for a in probs]
     r = random.uniform(0, 1)
     for i in range(len(probs)):
         r = r - probs[i]
         if r <= 0:
             return i
-    return len(probs)-1
+    return len(probs) - 1
+
 
 def c_array(ctype, values):
-    arr = (ctype*len(values))()
+    arr = (ctype * len(values))()
     arr[:] = values
     return arr
+
 
 class BOX(Structure):
     _fields_ = [("x", c_float),
                 ("y", c_float),
                 ("w", c_float),
                 ("h", c_float)]
+
 
 class DETECTION(Structure):
     _fields_ = [("bbox", BOX),
@@ -38,13 +42,13 @@ class IMAGE(Structure):
                 ("c", c_int),
                 ("data", POINTER(c_float))]
 
+
 class METADATA(Structure):
     _fields_ = [("classes", c_int),
                 ("names", POINTER(c_char_p))]
 
-    
 
-#lib = CDLL("/home/pjreddie/documents/darknet/libdarknet.so", RTLD_GLOBAL)
+# lib = CDLL("/home/pjreddie/documents/darknet/libdarknet.so", RTLD_GLOBAL)
 lib = CDLL("libdarknet.so", RTLD_GLOBAL)
 lib.network_width.argtypes = [c_void_p]
 lib.network_width.restype = c_int
@@ -114,6 +118,7 @@ predict_image = lib.network_predict_image
 predict_image.argtypes = [c_void_p, IMAGE]
 predict_image.restype = POINTER(c_float)
 
+
 def classify(net, meta, im):
     out = predict_image(net, im)
     res = []
@@ -121,6 +126,7 @@ def classify(net, meta, im):
         res.append((meta.names[i], out[i]))
     res = sorted(res, key=lambda x: -x[1])
     return res
+
 
 def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45):
     im = load_image(image, 0, 0)
@@ -141,14 +147,39 @@ def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45):
     free_image(im)
     free_detections(dets, num)
     return res
-    
+
+
 if __name__ == "__main__":
-    #net = load_net("cfg/densenet201.cfg", "/home/pjreddie/trained/densenet201.weights", 0)
-    #im = load_image("data/wolf.jpg", 0, 0)
-    #meta = load_meta("cfg/imagenet1k.data")
-    #r = classify(net, meta, im)
-    #print r[:10]
-    net = load_net("cfg/tiny-yolo.cfg", "tiny-yolo.weights", 0)
-    meta = load_meta("cfg/coco.data")
-    r = detect(net, meta, "data/dog.jpg")
-    print r
+    # net = load_net("cfg/densenet201.cfg", "/home/pjreddie/trained/densenet201.weights", 0)
+    # im = load_image("data/wolf.jpg", 0, 0)
+    # meta = load_meta("cfg/imagenet1k.data")
+    # r = classify(net, meta, im)
+    # print r[:10]
+    cfg_path="/yolov3-tiny.cfg"
+    weight_path="/yolov3-tiny_190000.weights"
+    voc_data_path="/voc.data"
+    image_path="test_img"
+    save_txt_path="test_txt/"
+    net = load_net(cfg_path.encode("utf-8"),weight_path.encode("utf-8"), 0)
+    meta = load_meta(voc_data_path.encode("utf-8"))
+
+    h, w = (720,1280)#image.shape#image这里自己写，默认大小都一样，不一样的放到循环里自己改
+    # 这里是看看detect返回，是个啥东西
+    # r = detect(net, meta, image_path.encode("utf-8"))
+    # print(r)
+    #如下
+    # '''
+    # [(b'1', 0.9999887943267822, (774.8587036132812, 215.47256469726562, 58.059661865234375, 113.52703857421875)), (b'2', 0.9999806880950928, (527.7337646484375, 148.5065460205078, 140.34605407714844, 172.92657470703125)), (b'0', 0.999705970287323, (851.7841186523438, 239.55726623535156, 120.78642272949219, 147.0437469482422)), (b'8', 0.9661810994148254, (635.3667602539062, 177.50839233398438, 133.09263610839844, 160.52532958984375))]
+    # '''
+    import os
+    test_img_list = list(os.listdir(image_path))
+    for i, img_name in enumerate(test_img_list):
+        r = detect(net, meta, (image_path + "/" + str(img_name)).encode("utf-8"))
+        print("-------------第%d个图------------" % (i), "\n")
+        for j, hang_num in enumerate(r):
+            coordinate = list(hang_num[2])
+            img_txt_one = (str(hang_num[0]))[2] + " " + str(coordinate[0] / w) + " " + str(coordinate[1] / h) + " " + str(coordinate[2] / w) + " " + str(coordinate[3] / h)
+            # print(img_txt_one)
+            with open(save_txt_path + (str(img_name))[:-3] + "txt","a") as f:
+                f.write(img_txt_one.replace(",", "") + "\n")
+
