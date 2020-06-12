@@ -27,4 +27,4 @@
 
     	5.`save_txt_path`="文件夹"
 
-3. ran就行了 
+3. run就行了 
