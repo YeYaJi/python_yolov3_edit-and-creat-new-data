@@ -16,10 +16,17 @@
 ## 三、操作步骤
 1. clone此项目
 2. 参数设置 
+
+
 	1.`cfg_path`="/XXX.cfg"---因为是做测试，所以一定要把`.cfg`改成**Testing**模式
+
     	2.`weight_path`="XXX.weights"--训练好的权重
+
     	3.`voc_data_path`="voc.data"--这里面的数据保持训练时就行，主要就是用个`classes`
+
     	4.`image_path`="文件夹"
+
     	5.`save_txt_path`="文件夹"
+
 
 3. run就行了 
